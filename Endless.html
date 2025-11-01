@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24 Game - Endless Mode</title>
+    <link rel="stylesheet" href="StyleSheet2.css">
+    <style>
+        body {
+            font-family: 'DotGothic16', sans-serif;
+            background: linear-gradient(25deg, black 0%, black 50%, orange 50%, orange 100%);
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .number-display {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+        .input-field {
+            width: 300px;
+            padding: 10px;
+            font-size: 18px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .submit-button, .restart-button {
+            background-color: darkorange;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .timer {
+            font-size: 20px;
+            margin-top: 10px;
+        }
+        .stats {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        .lose-screen {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 36px;
+            text-align: center;
+        }
+        .restart-button {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Endless Mode</h1>
+    <div class="game-container" id="gameContainer">
+        <h2>Solve for 24</h2>
+        <div class="number-display" id="numbers"></div>
+        <input type="text" id="userInput" class="input-field" placeholder="Enter your equation...">
+        <button class="submit-button" onclick="checkSolution()">Submit</button>
+        <p id="resultMessage"></p>
+        <p class="timer">Time Left: <span id="timeLeft">300</span> sec | Points: <span id="points">0</span></p>
+        <p class="stats">Highest Solved: <span id="highestSolved">0</span> | Highest Points: <span id="highestPoints">0</span></p>
+    </div>
+    
+    <div class="lose-screen" id="loseScreen" style="display: none;">
+        <p>You Lost!</p>
+        <button class="restart-button" onclick="restartGame()">Restart</button>
+    </div>
+    
+    <script>
+        let timer;
+        let timeLeft = 300;
+        let points = 0;
+        let problemsSolved = 0;
+        let highestSolved = parseInt(localStorage.getItem("highestSolved")) || 0;
+        let highestPoints = parseInt(localStorage.getItem("highestPoints")) || 0;
+        
+        document.getElementById("highestSolved").textContent = highestSolved;
+        document.getElementById("highestPoints").textContent = highestPoints;
+        
+        function startTimer() {
+            timer = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    document.getElementById("timeLeft").textContent = timeLeft;
+                } else {
+                    clearInterval(timer);
+                    document.getElementById("resultMessage").textContent = "";
+                    document.getElementById("loseScreen").style.display = "flex";
+                    updateHighScores();
+                }
+            }, 1000);
+        }
+        
+        function generateNumbers() {
+            let numbers;
+            do {
+                numbers = [];
+                while (numbers.length < 4) {
+                    let num = Math.floor(Math.random() * 10) + 1;
+                    numbers.push(num);
+                }
+            } while (!hasValidSolution(numbers)); // Ensure the numbers can solve to 24
+            document.getElementById("numbers").textContent = numbers.join(" ");
+            localStorage.setItem("currentNumbers", JSON.stringify(numbers));
+        }
+        
+        function hasValidSolution(numbers) {
+            // Check all possible combinations of operations
+            const operators = ["+", "-", "*", "/"];
+            for (let a of numbers) {
+                for (let b of numbers) {
+                    if (b === a) continue;
+                    for (let c of numbers) {
+                        if (c === a || c === b) continue;
+                        for (let d of numbers) {
+                            if (d === a || d === b || d === c) continue;
+                            for (let op1 of operators) {
+                                for (let op2 of operators) {
+                                    for (let op3 of operators) {
+                                        const expression1 = `(${a} ${op1} ${b}) ${op2} ${c} ${op3} ${d}`;
+                                        const expression2 = `${a} ${op1} (${b} ${op2} ${c}) ${op3} ${d}`;
+                                        const expression3 = `${a} ${op1} ${b} ${op2} (${c} ${op3} ${d})`;
+                                        try {
+                                            if (eval(expression1) === 24) return true;
+                                            if (eval(expression2) === 24) return true;
+                                            if (eval(expression3) === 24) return true;
+                                        } catch (error) {
+                                            // Ignore invalid expressions
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+        
+        function checkSolution() {
+            let input = document.getElementById("userInput").value;
+            let numbers = JSON.parse(localStorage.getItem("currentNumbers"));
+            if (isValidSolution(input, numbers)) {
+                problemsSolved++;
+                let pointsGained = problemsSolved * 100;
+                let timeGained = Math.max(20 - problemsSolved, 5);
+                points += pointsGained;
+                timeLeft += timeGained;
+                document.getElementById("points").textContent = points;
+                document.getElementById("timeLeft").textContent = timeLeft;
+                document.getElementById("resultMessage").textContent = "Correct! +" + pointsGained + " points, +" + timeGained + " sec";
+                generateNumbers();
+            } else {
+                document.getElementById("resultMessage").textContent = "Incorrect! Try again.";
+            }
+            document.getElementById("userInput").value = "";
+        }
+        
+        function isValidSolution(input, numbers) {
+            try {
+                // Check if the input uses all the numbers and evaluates to 24
+                const usedNumbers = input.match(/\d+/g).map(Number);
+                const sortedInputNumbers = usedNumbers.sort((a, b) => a - b);
+                const sortedTargetNumbers = numbers.sort((a, b) => a - b);
+                return JSON.stringify(sortedInputNumbers) === JSON.stringify(sortedTargetNumbers) && eval(input) === 24;
+            } catch (error) {
+                return false;
+            }
+        }
+        
+        function updateHighScores() {
+            if (problemsSolved > highestSolved) {
+                localStorage.setItem("highestSolved", problemsSolved);
+            }
+            if (points > highestPoints) {
+                localStorage.setItem("highestPoints", points);
+            }
+        }
+        
+        function restartGame() {
+            document.getElementById("loseScreen").style.display = "none";
+            timeLeft = 300;
+            points = 0;
+            problemsSolved = 0;
+            document.getElementById("timeLeft").textContent = timeLeft;
+            document.getElementById("points").textContent = points;
+            generateNumbers();
+            startTimer();
+        }
+        
+        generateNumbers();
+        startTimer();
+    </script>
+</body>
+</html>

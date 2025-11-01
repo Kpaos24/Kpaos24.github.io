@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>24 Game - Versus Mode</title>
+    <link rel="stylesheet" href="StyleSheet2.css">
+    <style>
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        body {
+            font-family: 'DotGothic16', sans-serif;
+            background: linear-gradient(25deg, black 0%, black 50%, orange 50%, orange 100%);
+            color: #fff;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            animation: fadeIn 1s ease-in-out;
+        }
+        .menu, .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+        .button {
+            background-color: darkorange;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 20px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: transform 0.2s;
+        }
+        .button:hover {
+            transform: scale(1.1);
+        }
+        .room-code {
+            font-size: 18px;
+            margin-top: 10px;
+        }
+        .bot-selection {
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .start-button {
+            display: none;
+            margin-top: 10px;
+        }
+        .game-container {
+            display: none;
+        }
+        .problem {
+            font-size: 26px;
+            margin: 20px 0;
+        }
+        .hearts {
+            font-size: 22px;
+            margin: 10px;
+        }
+        input[type="text"] {
+            font-size: 22px;
+            padding: 12px;
+            width: 300px;
+            text-align: center;
+            border-radius: 6px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>Versus Mode</h1>
+    <div class="menu" id="menu">
+        <button class="button" id="createRoomButton" onclick="createRoom()">Create Room</button>
+        <div class="room-code" id="roomCode"></div>
+        <div class="bot-selection" id="botSelection">
+            <button class="button" onclick="setBotDifficulty('easy')">Easy Bot</button>
+            <button class="button" onclick="setBotDifficulty('normal')">Normal Bot</button>
+            <button class="button" onclick="setBotDifficulty('hard')">Hard Bot</button>
+        </div>
+        <button class="button start-button" id="startButton" onclick="startGame()">Start</button>
+    </div>
+    
+    <div class="game-container" id="gameContainer">
+        <div class="hearts">Player 1 Hearts: <span id="playerHearts">❤❤❤</span></div>
+        <div class="hearts">Opponent Hearts: <span id="opponentHearts">❤❤❤</span></div>
+        <div class="problem" id="problem"></div>
+        <input type="text" id="solution" placeholder="Enter solution">
+        <button class="button" onclick="submitSolution()">Submit</button>
+        <div id="status"></div>
+    </div>
+    
+    <script>
+        let roomCode = "";
+        let botDifficulty = "";
+        let playerHearts = 3;
+        let opponentHearts = 3;
+        let currentProblem;
+        let botTimer;
+
+        function createRoom() {
+            roomCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+            document.getElementById("roomCode").textContent = "Room Code: " + roomCode;
+            document.getElementById("botSelection").style.display = "flex";
+            document.getElementById("createRoomButton").style.display = "none";
+            document.getElementById("startButton").style.display = "block";
+        }
+
+        function setBotDifficulty(level) {
+            botDifficulty = level;
+            alert("Bot set to: " + level + " difficulty");
+        }
+
+        function startGame() {
+            document.getElementById("menu").style.display = "none";
+            document.getElementById("gameContainer").style.display = "block";
+            generateProblem();
+            startBot();
+        }
+
+        function generateProblem() {
+            let validProblems = [
+                [8, 8, 3, 1], [6, 6, 4, 2], [6, 6, 3, 3], [9, 3, 2, 2],
+                [12, 4, 1, 1], [8, 3, 3, 2], [6, 4, 4, 2], [4, 4, 2, 2]
+            ];
+            currentProblem = validProblems[Math.floor(Math.random() * validProblems.length)];
+            document.getElementById("problem").textContent = `Solve using: ${currentProblem.join(", ")}`;
+        }
+
+        function evaluateSolution(expression, numbers) {
+            try {
+                let usedNumbers = expression.match(/\d+/g).map(Number);
+                if (usedNumbers.sort().toString() !== numbers.sort().toString()) return false;
+                return eval(expression) === 24;
+            } catch (error) {
+                return false;
+            }
+        }
+
+        function submitSolution() {
+            let solution = document.getElementById("solution").value;
+            if (evaluateSolution(solution, currentProblem)) {
+                document.getElementById("status").textContent = "Correct! Attack Opponent!";
+                opponentHearts--;
+                updateHearts();
+                if (opponentHearts === 0) {
+                    alert("You win!");
+                    location.reload();
+                } else {
+                    generateProblem();
+                }
+            } else {
+                document.getElementById("status").textContent = "Wrong! Try again.";
+            }
+        }
+
+        function startBot() {
+            let botTime = botDifficulty === "easy" ? 300000 : botDifficulty === "normal" ? 180000 : 90000;
+            botTimer = setTimeout(botSolve, botTime);
+        }
+
+        function botSolve() {
+            if (opponentHearts > 0) {
+                document.getElementById("status").textContent = "Bot solved it!";
+                playerHearts--;
+                updateHearts();
+                if (playerHearts === 0) {
+                    alert("Bot wins!");
+                    location.reload();
+                } else {
+                    generateProblem();
+                    startBot();
+                }
+            }
+        }
+
+        function updateHearts() {
+            document.getElementById("playerHearts").textContent = "❤".repeat(playerHearts);
+            document.getElementById("opponentHearts").textContent = "❤".repeat(opponentHearts);
+
+        }
+        //test//
+        function evaluateSolution(expression, numbers) {
+    try {
+        // Extract numbers from expression
+        let usedNumbers = expression.match(/\d+/g).map(Number);
+        
+        // Sort both arrays and check if they have the same elements
+        let sortedNumbers = [...numbers].sort((a, b) => a - b);
+        let sortedUsedNumbers = [...usedNumbers].sort((a, b) => a - b);
+        
+        if (JSON.stringify(sortedUsedNumbers) !== JSON.stringify(sortedNumbers)) return false;
+        
+        // Evaluate the expression safely
+        return eval(expression) === 24;
+    } catch (error) {
+        return false;
+    }
+}
+
+    </script>
+</body>
+</html>
